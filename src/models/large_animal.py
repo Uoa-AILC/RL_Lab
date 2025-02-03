@@ -4,7 +4,7 @@ import pygame
 import numpy as np
 
 LAG_THRESHOLD = 0.2
-class Animal:
+class LargeAnimal:
     def __init__(self, x, y, width, height, color, padding_width=40):
         self.screenshot_counter = 0 
         self.width = width

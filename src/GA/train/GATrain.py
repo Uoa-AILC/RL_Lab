@@ -18,8 +18,10 @@ MUTATION_NUMBER = 6
 NUM_AGENTS_TO_SELECT = 5
 REPRODUCE_METHOD = 'rand'
 
-SPEED_FACTOR = 4
+SPEED_FACTOR =3
 DT_FACTOR = 0.1
+RENDER_MODE = "Single"
+
 
 image_shape = (32, 32, 3)
 input_feature_size = 3
@@ -29,7 +31,7 @@ output_feature_size = 5
 
 if __name__ == '__main__':
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    parallel_env = AnimalEnv(NUM_AGENTS, num_plants=NUM_PLANTS, speed_factor=SPEED_FACTOR, dt_factor=DT_FACTOR)
+    parallel_env = AnimalEnv(NUM_AGENTS, num_plants=NUM_PLANTS, speed_factor=SPEED_FACTOR, dt_factor=DT_FACTOR, render_mode=RENDER_MODE)
     GA_trainer = GATrainer(image_shape, input_feature_size, output_feature_size, NUM_AGENTS, device, False)
     try:
         GA_trainer.load_model("GA_model_final.pt")

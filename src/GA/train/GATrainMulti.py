@@ -39,8 +39,12 @@ if __name__ == '__main__':
         for agent in parallel_env.possible_agents:
             GA_small_trainer.add_agent(agent)
     try:
-        GA_large_trainer.load_model("GA_model_final.pt")
-
+        GA_large_trainer.load_model("GA_model_large_final.pt")
+    except Exception as e:
+        print(e)
+        for agent in parallel_env.possible_agents:
+            GA_large_trainer.add_agent(agent)
+            
     step = 0
     rewards_record = RewardRecorder()
     num_episodes = 0

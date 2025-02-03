@@ -130,6 +130,19 @@ class GATrainer:
         self.performance.pop(agent_name)
         self.population_size -= 1
         #print(f"Agent {agent_name} removed")
+        
+    def expand_population(self):
+        loaded_agents = list(self.population.keys())
+        for i in range(self.max_population_size):
+            agent_name = f"agent_{i}"
+            if agent_name not in loaded_agents:
+                parent1 = random.choice(loaded_agents)
+                parent2 = random.choice(loaded_agents)
+                child = self.reproduce_two(self.population[parent1], self.population[parent2])
+                self.population[agent_name] = child
+                self.population_size += 1
+                self.mutate_agent(1, agent_name, num_mutations=2)
+                print(f"New agent produced {agent_name}")
 
     def load_model(self, filename):
         checkpoint = torch.load(filename, weights_only=True)

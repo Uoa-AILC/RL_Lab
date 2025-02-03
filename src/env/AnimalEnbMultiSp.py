@@ -6,6 +6,7 @@ import pygame
 import numpy as np
 from gymnasium.spaces import Discrete, Dict, Box
 from ..models.animal import Animal
+from ..models.large_animal import LargeAnimal
 from ..models.plant import Plant
 
 WINDOW_WIDTH = 600
@@ -24,7 +25,7 @@ LAG_THRESHOLD = 0.1 + DT_FACTOR
 SCREEN_SHOT_WIDTH = 100
 SCREEN_SHOT_HEIGHT = 100
 BOUNDRY_WIDTH = 10
-RENDER_MODE = "Single"
+RENDER_MODE = True
 NUM_PLANTS = 25
 
 
@@ -33,15 +34,17 @@ class AnimalEnv():
         "name": "AnimalEnv",
     }
 
-    def __init__(self, agent_size, window_width=WINDOW_WIDTH, window_height=WINDOW_HEIGHT, num_plants=NUM_PLANTS, speed_factor=SPEED_FACTOR, dt_factor=DT_FACTOR, render_mode=RENDER_MODE):
-        self.agent_size = agent_size
+    def __init__(self, small_agent_size, large_agent_size, window_width=WINDOW_WIDTH, window_height=WINDOW_HEIGHT, num_plants=NUM_PLANTS, speed_factor=SPEED_FACTOR, dt_factor=DT_FACTOR):
+        self.small_agent_size = small_agent_size
+        self.large_agent_size = large_agent_size
         self.window_width = window_width
         self.window_height = window_height
         self.num_plants = num_plants
         self.speed_factor = speed_factor
         self.dt_factor = dt_factor
-        self.possible_agents = ["agent_" + str(r) for r in range(self.agent_size)]
-        self.render_mode = render_mode
+        self.possible_small_agents = ["small_agent_" + str(r) for r in range(self.small_agent_size)]
+        self.possible_large_agents = ["large_agent_" + str(r) for r in range(self.large_agent_size)]
+        self.render_mode = RENDER_MODE
         self.steps = 0
         pygame.init()
         self.screen = pygame.display.set_mode((self.window_width+2*PADDING_WIDTH, self.window_height+2*PADDING_WIDTH))
@@ -53,13 +56,18 @@ class AnimalEnv():
         self.screen.fill(BLACK)
         self.steps = 0
         self.agents = []
-        self.agent_instances = [
+        self.small_agent_instances = [
             Animal(random.randint(BOUNDRY_WIDTH+PADDING_WIDTH, self.window_width-BOUNDRY_WIDTH),
                    random.randint(BOUNDRY_WIDTH+PADDING_WIDTH, self.window_height-BOUNDRY_WIDTH),
                    self.window_width, self.window_height, BLUE)
-            for _ in range(self.agent_size)
+            for _ in range(self.small_agent_size)
         ]
-
+        self.large_agent_instances = [
+            LargeAnimal(random.randint(BOUNDRY_WIDTH+PADDING_WIDTH, self.window_width-BOUNDRY_WIDTH),
+                     random.randint(BOUNDRY_WIDTH+PADDING_WIDTH, self.window_height-BOUNDRY_WIDTH),
+                     self.window_width, self.window_height, RED)
+            for _ in range(self.large_agent_size)
+        ]
         self.agent_name_mapping = dict(
             zip(self.possible_agents, list(range(len(self.possible_agents))))
         )
@@ -143,7 +151,7 @@ class AnimalEnv():
 
     def render(self):
 
-        if self.render_mode == "Human" or self.render_mode == "Single":
+        if RENDER_MODE:
             self.screen.fill(BLACK)
             inner_rect = pygame.Rect(
                 PADDING_WIDTH,
@@ -163,12 +171,12 @@ class AnimalEnv():
 
     def render_human_only(self):
         font = pygame.font.Font(None, 20)
-        if self.render_mode == "Human":
+        if RENDER_MODE:
             for agent in self.agents:
                 agent_ins = self.agent_instance_mapping[agent]
                 agent_ins.draw_name(self.screen, font, agent)
                 agent_ins.draw_energy(self.screen)
-        pygame.display.update()
+            pygame.display.update()
 
     @functools.lru_cache(maxsize=None)
     def observation_space(self, agent):

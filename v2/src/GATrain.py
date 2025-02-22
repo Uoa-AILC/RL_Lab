@@ -4,19 +4,19 @@ from AnimalEnvMultiAgent import AnimalEnv
 from Buffer import RewardRecorder
 from AnimalTrainer import GATrainer
 
-NUM_AGENTS = 50
-NUM_PLANTS = 30
+NUM_AGENTS = 30
+NUM_PLANTS = 50
 
 MAX_STEPS = 3000000
 MAX_EPSIDOE_STEPS = 2000
 
-UPDATE_FREQUENCY = 2
-SAVE_FREQUENCY = 400000
+UPDATE_FREQUENCY = 3
+SAVE_FREQUENCY = 300000
 
 MUTATION_RATE = 1
-MUTATION_NUMBER = 10
+MUTATION_NUMBER = 3
 NUM_AGENTS_TO_SELECT = 5
-REPRODUCE_METHOD = 'rand'
+REPRODUCE_METHOD = 'even'
 
 SPEED_FACTOR = 6
 DT_FACTOR = 0.1 
@@ -25,7 +25,7 @@ RENDER_MODE = "Single"
 WINDOW_WIDTH = 600
 WINDOW_HEIGHT = 600
 
-image_shape = (16, 16, 3)
+image_shape = (20, 20, 3)
 input_feature_size = 3
 output_feature_size = 5
 
@@ -43,7 +43,7 @@ if __name__ == '__main__':
 
     # Load the model if it exists
     try:
-        GA_trainer.load_model("GA_model_.pt")
+        GA_trainer.load_model("GA_model_final.pt")
     except Exception as e:
         print(e)
 

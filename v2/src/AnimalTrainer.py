@@ -18,7 +18,6 @@ class GATrainer:
         self.plant_size = plant_size
         self.window_width = window_width
         self.window_height = window_height
-        self.population_size = 0
         self.population = {}
         self.performance = {}
         self.best_model = None
@@ -62,7 +61,7 @@ class GATrainer:
                 state_tensor = torch.tensor(agent_state, dtype=torch.float32, device=self.device).unsqueeze(0)
                 q_values = self.population[agent_name].nn(state_tensor)
                 return torch.argmax(q_values).item()
-    
+
     # function to evaluate the performance of the agents and update the performance dictionary
     def evaluate(self, rewards):
         # normalize rewards
@@ -87,7 +86,8 @@ class GATrainer:
             if agent not in selected_agents:
                 self.remove_agent(agent)
 
-        num_children = self.population_size - len(self.population)
+        num_children = self.agent_size - len(self.population)
+        print(f"Number of children: {num_children}")
         for i in range(num_children):
             parent1 = self.population[selected_agents[i % len(selected_agents)]].nn
             parent2 = self.population[selected_agents[(i + 1) % len(selected_agents)]].nn
@@ -96,11 +96,10 @@ class GATrainer:
             for agent_name in self.possible_agents:
                 if agent_name not in self.population:
                     self.population[agent_name] = child_animal
-                    self.population_size += 1
                     #print(f"New agent produced {agent_name}")
                     self.mutate_agent(mutation_rate, agent_name, num_mutations=num_mutations)
                     break
-                    
+
     def reproduce_two(self, parent1, parent2, method="even"):
         child = self.get_new_nn()
         with torch.no_grad():
@@ -113,8 +112,7 @@ class GATrainer:
                     mask = torch.rand_like(p1_param) < 0.5
                     child_param.data.copy_(torch.where(mask, p1_param.data, p2_param.data))
         return child
-    
-    
+
     def mutate_agent(self, degree, agent_name, num_mutations=2):
         with torch.no_grad():
             params = list(self.population[agent_name].nn.parameters())
@@ -126,7 +124,6 @@ class GATrainer:
     def remove_agent(self, agent_name):
         self.population.pop(agent_name)
         self.performance.pop(agent_name)
-        self.population_size -= 1
         #print(f"Agent {agent_name} removed")
         
     # def expand_population(self):

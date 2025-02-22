@@ -1,8 +1,9 @@
+import json
 import random
 import numpy as np
 import torch
 import math
-from ...models.SimpleNN import SimpleNN
+from ...models.SimpleNN import MiniNN
 
 
 
@@ -20,7 +21,8 @@ class GATrainer:
         self.is_simple = is_simple
         
     def get_simple_nn(self):
-        return SimpleNN(math.prod(self.image_shape)+self.input_feature_size, self.output_feature_size).to(self.device)
+        return MiniNN(math.prod(self.image_shape)+self.input_feature_size, self.output_feature_size).to(self.device)
+
         
     def add_agent(self, agent_name):
         self.population[agent_name] = self.get_simple_nn()
@@ -160,8 +162,51 @@ class GATrainer:
         self.population_size += len(checkpoint['models'])
         print(f"Population size: {self.population_size}")
 
+    def load_model_json(self, filename):
+        with open(filename, 'r') as f:
+            states = json.load(f)
+        num_loaded = 0
+        for idx, state in enumerate(states):
+            agent_name = f"agent_{idx}"
+            nn = self.get_simple_nn()
+            nn.load_state_dict({k: torch.tensor(v, device=self.device) for k, v in state.items()})
+            self.population[agent_name] = nn
+            print(f"Agent {agent_name} loaded")
+            self.performance[agent_name] = 0
+            num_loaded += 1
+            if num_loaded >= self.max_population_size:
+                break
+        self.population_size += len(states)
+        print(f"Population size: {self.population_size}")
+
     def save_model(self, filename):
         selected_agents = self.select_population()
         agent_models = [self.population[agent] for agent in selected_agents]
         states = [model.state_dict() for model in agent_models]
         torch.save({'models': states}, filename)
+
+
+    def save_model_json(self, filename):
+        selected_agents = self.select_population()
+        agent_models = [self.population[agent] for agent in selected_agents]
+        states = [model.state_dict() for model in agent_models]
+        serializable_states = []
+        for state in states:
+            serializable_state = {}
+            for key, tensor in state.items():
+                serializable_state[key] = tensor.cpu().tolist()
+            serializable_states.append(serializable_state)
+        with open(filename, 'w') as f:
+            json.dump(serializable_states, f, indent=2)
+        print(f"Models saved to {filename}")
+
+    def save_best_model(self, filename):
+        selected_agents = self.select_population()
+        self.best_model = selected_agents[0]
+        state = self.population[self.best_model].state_dict()
+        serializable_state = {}
+        for key, tensor in state.items():
+            serializable_state[key] = tensor.cpu().tolist()
+        with open(filename, 'w') as f:
+            json.dump(serializable_state, f, indent=2)
+        print(f"Best model saved to {filename}")

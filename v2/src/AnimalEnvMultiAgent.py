@@ -4,95 +4,98 @@ import random
 import cv2
 import pygame
 import numpy as np
-from gymnasium.spaces import Discrete, Dict, Box
-from ..models.animal import Animal
-from ..models.large_animal import LargeAnimal
-from ..models.plant import Plant
+from gymnasium.spaces import Discrete
 
+
+#-----PLEASE EDIT CONSTANTS IN THE TRAINING SCRIPT, BELOW ARE DEFAULT VALUES-----#
+
+
+# The size of the env window
 WINDOW_WIDTH = 600
 WINDOW_HEIGHT = 600
+
 WHITE = (255,255,255)
 RED = (255,0,0)
 GREEN = (0,255,0)
 BLUE = (0,0,255)
 BLACK = (0,0,0)
+
+
+# The middle of the window
 PX = WINDOW_WIDTH//2
 PY = WINDOW_HEIGHT//2
-SPEED_FACTOR = 3
+
+# How fast the game runs
+SPEED_FACTOR = 1
 DT_FACTOR = 10
+
+# Size of the padding of the window
 PADDING_WIDTH = 40
+
+# The lag threshold. If the lag is greater than this, skip the frame
 LAG_THRESHOLD = 0.1 + DT_FACTOR
+
+# Size of the screenshot the agent sees
 SCREEN_SHOT_WIDTH = 100
 SCREEN_SHOT_HEIGHT = 100
+
+# The resolution of the screenshot
+SCREEN_SHOT_RESOLUTION = (16, 16)
+
+# The width of the boundary for the agent to spawn within
 BOUNDRY_WIDTH = 10
-RENDER_MODE = True
+
+RENDER_MODE = "Single"
 NUM_PLANTS = 25
 
-
+# The class that defines the environment the agents are in
 class AnimalEnv():
-    metadata = {
-        "name": "AnimalEnv",
-    }
-
-    def __init__(self, small_agent_size, large_agent_size, window_width=WINDOW_WIDTH, window_height=WINDOW_HEIGHT, num_plants=NUM_PLANTS, speed_factor=SPEED_FACTOR, dt_factor=DT_FACTOR):
-        self.small_agent_size = small_agent_size
-        self.large_agent_size = large_agent_size
+    
+    def __init__(self, agent_size, window_width=WINDOW_WIDTH, window_height=WINDOW_HEIGHT, image_shape=SCREEN_SHOT_RESOLUTION, num_plants=NUM_PLANTS, speed_factor=SPEED_FACTOR, dt_factor=DT_FACTOR, render_mode=RENDER_MODE):
+        self.agent_size = agent_size
         self.window_width = window_width
         self.window_height = window_height
         self.num_plants = num_plants
         self.speed_factor = speed_factor
         self.dt_factor = dt_factor
-        self.possible_small_agents = ["small_agent_" + str(r) for r in range(self.small_agent_size)]
-        self.possible_large_agents = ["large_agent_" + str(r) for r in range(self.large_agent_size)]
-        self.render_mode = RENDER_MODE
+        self.render_mode = render_mode
+        self.image_shape = image_shape
+        if len(image_shape) != 2:
+            self.image_shape = image_shape[:2]
         self.steps = 0
+
         pygame.init()
         self.screen = pygame.display.set_mode((self.window_width+2*PADDING_WIDTH, self.window_height+2*PADDING_WIDTH))
         pygame.display.set_caption("Multi-Agent Environment")
         self.clock = pygame.time.Clock()
 
-
-    def reset(self, seed=None, options=None):
+    
+    def reset(self, agents=None, Plants=None, possible_agents=None):
+        self.agents = []
         self.screen.fill(BLACK)
         self.steps = 0
-        self.agents = []
-        self.small_agent_instances = [
-            Animal(random.randint(BOUNDRY_WIDTH+PADDING_WIDTH, self.window_width-BOUNDRY_WIDTH),
-                   random.randint(BOUNDRY_WIDTH+PADDING_WIDTH, self.window_height-BOUNDRY_WIDTH),
-                   self.window_width, self.window_height, BLUE)
-            for _ in range(self.small_agent_size)
-        ]
-        self.large_agent_instances = [
-            LargeAnimal(random.randint(BOUNDRY_WIDTH+PADDING_WIDTH, self.window_width-BOUNDRY_WIDTH),
-                     random.randint(BOUNDRY_WIDTH+PADDING_WIDTH, self.window_height-BOUNDRY_WIDTH),
-                     self.window_width, self.window_height, RED)
-            for _ in range(self.large_agent_size)
-        ]
-        self.small_agent_name_mapping = dict(
-            zip(self.possible_small_agents, list(range(len(self.possible_small_agents))))
-        )
-        
-        self.small_agent_instance_mapping = dict(
-            zip(self.possible_small_agents, self.small_agent_instances)
-        )
-        self.plants = [Plant(random.randint(BOUNDRY_WIDTH+PADDING_WIDTH, self.window_width-BOUNDRY_WIDTH), random.randint(BOUNDRY_WIDTH+PADDING_WIDTH, self.window_height-BOUNDRY_WIDTH), (0, 255, 0), (255, 0, 0)) for _ in range(self.num_plants)]
-
+        # create the agent instances
+        self.agent_instances = agents
+        self.plants = Plants
+        for plant in self.plants:
+            plant.land(random.randint(BOUNDRY_WIDTH+PADDING_WIDTH, self.window_width-BOUNDRY_WIDTH), random.randint(BOUNDRY_WIDTH+PADDING_WIDTH, self.window_height-BOUNDRY_WIDTH), )
+        for agent_name in self.agent_instances:
+            agent = self.agent_instances[agent_name]
+            agent.land(random.randint(BOUNDRY_WIDTH+PADDING_WIDTH, self.window_width-BOUNDRY_WIDTH), random.randint(BOUNDRY_WIDTH+PADDING_WIDTH, self.window_height-BOUNDRY_WIDTH))
+            agent.energy = 100
+            agent.alive = True
         self.render
-        self.small_agents = copy(self.possible_small_agents)
-        self.large_agents = copy(self.possible_large_agents)
+        self.agents = copy(possible_agents)
         self.timestep = 0
-
-        small_observations = {
+        observations = {
             a: (
-                self.get_obs(self.agent_instance_mapping[a], a)            
+                self.get_obs(self.agent_instances[a], a)            
                 )
             for a in self.agents
         }
-        # Get dummy infos. Necessary for proper parallel_to_aec conversion
-        infos = {a: {} for a in self.agents}
+        return observations
 
-        return observations, infos
-
+    # The step function that runs each frame
     def step(self, actions):
         skip = False
         self.render()
@@ -103,11 +106,12 @@ class AnimalEnv():
         truncations = {a: False for a in self.agents}
 
         if dt < LAG_THRESHOLD + DT_FACTOR:
+            # What happens each frame and reward calculation
             for plant in self.plants:
                 plant.grow()
 
             for agent_name in self.agents:
-                agent = self.agent_instance_mapping[agent_name]
+                agent = self.agent_instances[agent_name]
                 action = actions[agent_name]
                 agent.update(action, dt)
                 rewards[agent_name] = 0
@@ -122,22 +126,14 @@ class AnimalEnv():
                     
                 max_energy = agent.max_energy
                 rewards[agent_name] += agent.energy / max_energy
-            for large_agent in self.large_agent_instances:
-                for agent_name in self.agents:
-                    agent = self.agent_instance_mapping[agent_name]
-                    large_agent.update(agent, dt)
-                    if large_agent.eat(agent):
-                        rewards[agent_name] -= 5000
-                        rewards[large_agent.name] += 2000
-                        agent.alive = False
-                        break
+        # If the lag is too high, skip the frame
         else:
             skip = True
             print('skipping frame')
 
         observations = {
             a: (
-                self.get_obs(self.agent_instance_mapping[a], a)            
+                self.get_obs(self.agent_instances[a], a)            
                 )
             for a in self.agents
         }
@@ -149,18 +145,15 @@ class AnimalEnv():
         }
      
         for agent_name in self.agents:
-            if not self.agent_instance_mapping[agent_name].alive:
-                truncations[agent_name] = True
+            if not self.agent_instances[agent_name].alive:
                 self.agents.remove(agent_name)
-        if any(terminations.values()) or all(truncations.values()):
-            self.agents = []
 
         return observations, rewards, terminations, truncations, skip, agent_names
 
-
+    # The render function that draws the agents and plants
     def render(self):
 
-        if RENDER_MODE:
+        if self.render_mode == "Human" or self.render_mode == "Single":
             self.screen.fill(BLACK)
             inner_rect = pygame.Rect(
                 PADDING_WIDTH,
@@ -173,35 +166,24 @@ class AnimalEnv():
             self.handle_events()
             # self.screen.fill(WHITE)
             for agent in self.agent_instances:
-                agent.draw(self.screen)
+                self.agent_instances[agent].draw(self.screen)
             for plant in self.plants:
                 plant.draw(self.screen)
             #pygame.display.update()
 
     def render_human_only(self):
         font = pygame.font.Font(None, 20)
-        if RENDER_MODE:
+        if self.render_mode == "Human":
             for agent in self.agents:
                 agent_ins = self.agent_instance_mapping[agent]
                 agent_ins.draw_name(self.screen, font, agent)
                 agent_ins.draw_energy(self.screen)
-            pygame.display.update()
+        pygame.display.update()
 
-    @functools.lru_cache(maxsize=None)
-    def observation_space(self, agent):
-        self._observation_space = Dict({
-            f"agent_{i}": Dict({
-                'image': Box(low=0, high=1, shape=(3, 64, 64), dtype=np.float32),
-                'features': Box(low=-np.inf, high=np.inf, shape=(5,), dtype=np.float32)
-            }) for i in range(self.agent_size)
-        })
-        return self._observation_space[agent]
     
     @functools.lru_cache(maxsize=None)
     def action_space(self, agent):
         return Discrete(5)
-
-
 
 
     def get_obs(self, agent, agent_name):
@@ -221,7 +203,7 @@ class AnimalEnv():
         return np.array([agent.x_speed/agent.max_speed, agent.y_speed/agent.max_speed, agent.energy/agent.max_energy], dtype=np.float32)
                 
     def show_snapshot(self, image, agent_name):
-        target_size = (32, 32)
+        target_size = self.image_shape
         image = 255 - image
         image = cv2.resize(image, target_size)
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)  # Convert BGR to RGB
@@ -237,6 +219,6 @@ class AnimalEnv():
     
     def preprocess_image(self, image):
         image = image.astype(np.float32) / 255.0  # Normalize the image
-        # image = np.transpose(image, (2, 0, 1))  # Transpose to (3, 64, 64)
+
 
         return image

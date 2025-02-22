@@ -26,4 +26,23 @@ class CustomCNN(BaseFeaturesExtractor):
     def forward(self, observations):
         return self.cnn(observations)
     
+class MiniNN(nn.Module):
+    def __init__(self, feature_size, output_size):
+        super().__init__()
+        self.fc = nn.Sequential(
+            nn.Linear(feature_size, 16),
+            nn.ReLU(),
+            nn.Linear(16, output_size)
+        )
+
+    def forward(self, state):
+        return self.fc(state)
     
+class CustomMiniNN(BaseFeaturesExtractor):
+    def __init__(self, observation_space: spaces.Box, features_dim: int = 32):
+        super(CustomMiniNN, self).__init__(observation_space, features_dim)
+        n_input_features = int(np.prod(observation_space.shape))
+        self.cnn = MiniNN(feature_size=n_input_features, output_size=features_dim)
+    
+    def forward(self, observations):
+        return self.cnn(observations)

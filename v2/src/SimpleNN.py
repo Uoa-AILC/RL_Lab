@@ -10,4 +10,5 @@ class MiniNN(nn.Module):
         )
 
     def forward(self, state):
+        # print(state.shape)
         return self.fc(state)

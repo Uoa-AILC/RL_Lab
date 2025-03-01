@@ -2,7 +2,7 @@ import json
 import random
 import torch
 import math
-
+import copy
 from animal_V2 import Animal
 from SimpleNN import MiniNN
 
@@ -204,3 +204,105 @@ class GATrainer:
     #     with open(filename, 'w') as f:
     #         json.dump(serializable_state, f, indent=2)
     #     print(f"Best model saved to {filename}")
+
+class NSTrainer:
+    def  __init__(self, image_shape, input_feature_size, output_feature_size, max_agent_size=15, plant_size=25, device='cpu', window_width=WINDOW_WIDTH, window_height=WINDOW_HEIGHT, is_simple=False, is_reproducing=False):
+        self.max_agent_size = max_agent_size
+        self.plant_size = plant_size
+        self.window_width = window_width
+        self.window_height = window_height
+        self.population = {}
+        self.image_shape = image_shape
+        self.input_feature_size = input_feature_size
+        self.output_feature_size = output_feature_size
+        self.device = device
+        self.is_reproducing = is_reproducing
+        # create a list of possible agents                                                       
+        self.possible_agents = ["agent_" + str(r) for r in range(self.max_agent_size)]
+        # create the plants
+        self.plants = [Plant((0, 255, 0), (255, 0, 0)) for _ in range(plant_size)]
+        for agent_name in self.possible_agents:
+            self.add_agent(agent_name)
+
+    def __len__(self):
+        return len(self.population)
+
+    def get_new_animal(self, nn):
+        return Animal(0, 0, self.window_width, self.window_height, 40, nn, 0.05)
+
+    # funtion to get a simple neural network instance
+    def get_new_nn(self):
+        return MiniNN(math.prod(self.image_shape)+self.input_feature_size, self.output_feature_size).to(self.device)
+
+    # function to add an agent to the population
+    def add_agent(self, agent_name):
+        nn = self.get_new_nn()
+        animal = self.get_new_animal(nn)
+        self.population[agent_name] = animal
+        print(f"New agent added: {agent_name}")
+
+    # function to get the action of an agent
+    def get_action(self, agent_state, action_space, agent_name):
+        if agent_name not in self.population:
+            return action_space.sample()
+        else:
+            # Exploitation: Model-predicted best action
+            with torch.no_grad():
+                state_tensor = torch.tensor(agent_state, dtype=torch.float32, device=self.device).unsqueeze(0)
+                q_values = self.population[agent_name].nn(state_tensor)
+                return torch.argmax(q_values).item()
+
+    def add_new_born(self, agent):
+        if (len(self.population) < self.max_agent_size):
+            for agent_name in self.possible_agents:
+                if agent_name not in self.population:
+                    self.population[agent_name] = agent
+                    agent.nn = copy(agent.nn)
+                    self.mutate_agent(1, agent_name, num_mutations=2)
+                    print(f"New agent produced {agent_name}")
+            else:
+                print("Population is full")
+
+    def mutate_agent(self, degree, agent_name, num_mutations=2):
+        with torch.no_grad():
+            params = list(self.population[agent_name].nn.parameters())
+            selected_params = random.sample(params, min(num_mutations, len(params)))
+            for param in selected_params:
+                param.add_(torch.randn_like(param) * degree)
+
+    def reproduce_two(self, parent1, parent2, method="even"):
+        child = self.get_new_nn()
+        with torch.no_grad():
+            for child_param, p1_param, p2_param in zip(child.parameters(), parent1.parameters(), parent2.parameters()):
+                if method == "even":
+                    # Evenly mix
+                    child_param.data.copy_((p1_param.data + p2_param.data) / 2)
+                else:
+                    # Randomly choose each parameter element
+                    mask = torch.rand_like(p1_param) < 0.5
+                    child_param.data.copy_(torch.where(mask, p1_param.data, p2_param.data))
+        return child
+    
+    def load_model(self, filename):
+        checkpoint = torch.load(filename, weights_only=True)
+        num_loaded = 0
+        for idx, state_dict in enumerate(checkpoint['models']):
+            agent_name = f"agent_{idx}"
+            nn = self.get_new_nn()
+            nn.load_state_dict(state_dict)
+            new_animal = self.get_new_animal(nn)
+            self.population[agent_name] = new_animal
+            print(f"Agent {agent_name} loaded")
+            self.performance[agent_name] = 0
+            num_loaded += 1
+            if num_loaded >= self.agent_size:
+                break
+        self.population_size += len(checkpoint['models'])
+        print(f"Population size: {self.population_size}")
+
+    def save_model(self, filename):
+        selected_agents = self.select_population()
+        agent_models = [self.population[agent].nn for agent in selected_agents]
+        states = [model.state_dict() for model in agent_models]
+        torch.save({'models': states}, filename)
+

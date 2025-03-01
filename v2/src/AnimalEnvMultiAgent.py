@@ -174,9 +174,9 @@ class AnimalEnv():
     def render_human_only(self):
         font = pygame.font.Font(None, 20)
         if self.render_mode == "Human":
-            for agent in self.agents:
-                agent_ins = self.agent_instance_mapping[agent]
-                agent_ins.draw_name(self.screen, font, agent)
+            for name in self.agents:
+                agent_ins = self.agent_instances[name]
+                agent_ins.draw_name(self.screen, font, name)
                 agent_ins.draw_energy(self.screen)
         pygame.display.update()
 

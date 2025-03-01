@@ -19,11 +19,10 @@ class GATrainer:
         self.output_feature_size = output_feature_size
         self.device = device
         self.is_simple = is_simple
-        
+
     def get_simple_nn(self):
         return MiniNN(math.prod(self.image_shape)+self.input_feature_size, self.output_feature_size).to(self.device)
 
-        
     def add_agent(self, agent_name):
         self.population[agent_name] = self.get_simple_nn()
         self.population_size += 1
@@ -56,7 +55,6 @@ class GATrainer:
         return selected_agents
 
     def update_population(self, selected_agents, possiable_names, method="rand", mutation_rate=1, num_mutations=4):
-
         self.performance = {agent: 0 for agent in self.performance}
         for agent in list(self.population.keys()):
             if agent not in selected_agents:

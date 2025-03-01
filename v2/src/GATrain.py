@@ -18,14 +18,14 @@ MUTATION_NUMBER = 3
 NUM_AGENTS_TO_SELECT = 5
 REPRODUCE_METHOD = 'even'
 
-SPEED_FACTOR = 6
+SPEED_FACTOR = 10
 DT_FACTOR = 0.1 
-RENDER_MODE = "Single"
+RENDER_MODE = "Human"
 
 WINDOW_WIDTH = 600
 WINDOW_HEIGHT = 600
 
-image_shape = (20, 20, 3)
+image_shape = (32, 32, 3)
 input_feature_size = 3
 output_feature_size = 5
 
@@ -63,13 +63,14 @@ if __name__ == '__main__':
             for agent in parallel_env.agents:
                 actions[agent] = GA_trainer.get_action(current_state[agent], parallel_env.action_space(agent), agent)
             next_state, rewards, _, _, skip, agent_names = parallel_env.step(actions)
+            current_state = next_state
             # Skip the frame
             if skip:
                 continue
             for agent_name in agent_names:
                 # Add the reward to the reward recorder
                 rewards_record.add_reward(agent_names[agent_name], rewards[agent_name])
-                
+ 
             episode_step += 1
             step += 1
             if step % 1000 == 0:

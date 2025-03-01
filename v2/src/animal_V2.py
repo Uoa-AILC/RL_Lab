@@ -2,6 +2,7 @@ import math
 import random
 import pygame
 import numpy as np
+import torch
 
 
 BLUE = (0, 0, 255)
@@ -25,9 +26,12 @@ LAG_THRESHOLD = 0.2
 
 ENERGY_COST_PER_FRAME = 0.4
 
+BASE_RADIUS = 5
 
 class Animal:
     def __init__(self, x, y, width, height, padding_width=40, nn=None, reproduce_rate=0.05):
+        self.stage = 0
+        self.max_stage = 100
         self.screenshot_counter = 0 
         self.width = width
         self.height = height
@@ -124,19 +128,28 @@ class Animal:
         self.energy -= ENERGY_COST_PER_FRAME*dt
         self.check_energy()
 
+    def grow(self):
+        if self.stage < self.max_stage:
+            if self.energy / self.max_energy > 0.8:
+                self.stage += 1
+                self.max_energy += 10
+                self.max_speed += 10
+                self.acceleration -= 10
+                self.energy -= self.max_energy * 0.5
+
     # draw the animal on the given surface
     def draw(self, surface):
         # Draw the body
         color = self.color
         if not self.alive:
             color = (50, 50, 50)
-        pygame.draw.circle(surface, color, (int(self.position.x), int(self.position.y)), 5)
+        pygame.draw.circle(surface, color, (int(self.position.x), int(self.position.y)), BASE_RADIUS+self.stage) 
 
     # draw the energy bar of the animal
     def draw_energy(self, surface,):
         # Draw the energy bar
         bar_width = 40
-        bar_height = 5
+        bar_height = BASE_RADIUS + self.stage
         energy_ratio = self.energy / 100
         energy_bar_width = bar_width * energy_ratio
         bar_x = int(self.position.x - bar_width / 2)
@@ -148,7 +161,7 @@ class Animal:
 
     def draw_name(self, surface, font, name):
         text = font.render(name, True, (0, 0, 0))
-        surface.blit(text, (self.position.x - 10, self.position.y - 20))
+        surface.blit(text, (self.position.x - 10, self.position.y - 15 - BASE_RADIUS - self.stage))
 
     
     def hit (self, plant):
@@ -193,16 +206,16 @@ class Animal:
             self.die()
             return 1
         return 0
-    
-    def reproduce(self, other):
-        if self.sex == other.sex:
-            return None
+        
+    def reproduce(self):
         random = np.random.rand()
         if random < self.reproduce_rate:
             return None
         else:
-            if self.energy > 50 and other.energy > 50:
+            if self.energy > 50:
                 self.energy -= 50
-                other.energy -= 50
                 return Animal(self.position.x, self.position.y, self.width, self.height, self.padding_width, self.nn, self.reproduce_rate)
             return None
+        
+    
+    

@@ -29,7 +29,7 @@ ENERGY_COST_PER_FRAME = 0.4
 BASE_RADIUS = 5
 
 class Animal:
-    def __init__(self, x, y, width, height, padding_width=40, nn=None, reproduce_rate=0.05):
+    def __init__(self, x, y, width, height, padding_width=40, nn=None, reproduce_rate=0.0005):
         self.stage = 0
         self.max_stage = 100
         self.screenshot_counter = 0 
@@ -126,6 +126,7 @@ class Animal:
         self.update_position(dt)
         self.apply_drag(DRAG_COEFFICIENT, dt)
         self.energy -= ENERGY_COST_PER_FRAME*dt
+        # self.grow()
         self.check_energy()
 
     def grow(self):
@@ -149,11 +150,11 @@ class Animal:
     def draw_energy(self, surface,):
         # Draw the energy bar
         bar_width = 40
-        bar_height = BASE_RADIUS + self.stage
+        bar_height = 5
         energy_ratio = self.energy / 100
         energy_bar_width = bar_width * energy_ratio
         bar_x = int(self.position.x - bar_width / 2)
-        bar_y = int(self.position.y - 10)  # Position the bar above the animal
+        bar_y = int(self.position.y - 10 - self.stage)  # Position the bar above the animal
         # Draw the background of the energy bar (gray)
         pygame.draw.rect(surface, (128, 128, 128), (bar_x, bar_y, bar_width, bar_height))
         # Draw the foreground of the energy bar (green)
@@ -178,7 +179,7 @@ class Animal:
 
     def can_eat(self, plant):
         distance = self.position.distance_to(pygame.math.Vector2(plant.position.x, plant.position.y))
-        return distance < 10  # Threshold distance to eat the plant
+        return distance < 10 + self.stage  # Threshold distance to eat the plant
 
     def check_energy(self):
         if self.energy <= 0:
@@ -209,13 +210,36 @@ class Animal:
         
     def reproduce(self):
         random = np.random.rand()
-        if random < self.reproduce_rate:
+        if random > self.reproduce_rate:
             return None
         else:
             if self.energy > 50:
                 self.energy -= 50
-                return Animal(self.position.x, self.position.y, self.width, self.height, self.padding_width, self.nn, self.reproduce_rate)
+
+                new_x = self.position.x + random*10
+                new_y = self.position.y + random*10
+                if new_x < self.padding_width:
+                    new_x = self.padding_width
+                elif new_x > self.width + self.padding_width:
+                    new_x = self.width + self.padding_width
+                if new_y < self.padding_width:
+                    new_y = self.padding_width
+                elif new_y > self.height + self.padding_width:
+                    new_y = self.height + self.padding_width
+                
+                return Animal(new_x, new_y, self.width, self.height, self.padding_width, self.nn, self.reproduce_rate)
             return None
         
+    def reset(self):
+        self.energy = 100
+        self.alive = True
+        self.x_speed = 0
+        self.y_speed = 0
+        self.stage = 0
+        self.max_energy = 100
+        self.max_speed = 100
+        self.acceleration = 100
+        self.facing_direction = random.randint(0, 360)
+        self.max_distance_per_frame = MAX_DISTANCE_PER_FRAME
     
     

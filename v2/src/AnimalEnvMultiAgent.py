@@ -51,7 +51,7 @@ NUM_PLANTS = 25
 # The class that defines the environment the agents are in
 class AnimalEnv():
     
-    def __init__(self, agent_size, window_width=WINDOW_WIDTH, window_height=WINDOW_HEIGHT, image_shape=SCREEN_SHOT_RESOLUTION, num_plants=NUM_PLANTS, speed_factor=SPEED_FACTOR, dt_factor=DT_FACTOR, render_mode=RENDER_MODE):
+    def __init__(self, agent_size, is_NS=False, window_width=WINDOW_WIDTH, window_height=WINDOW_HEIGHT, image_shape=SCREEN_SHOT_RESOLUTION, num_plants=NUM_PLANTS, speed_factor=SPEED_FACTOR, dt_factor=DT_FACTOR, render_mode=RENDER_MODE):
         self.agent_size = agent_size
         self.window_width = window_width
         self.window_height = window_height
@@ -60,6 +60,7 @@ class AnimalEnv():
         self.dt_factor = dt_factor
         self.render_mode = render_mode
         self.image_shape = image_shape
+        self.is_NS = is_NS
         if len(image_shape) != 2:
             self.image_shape = image_shape[:2]
         self.steps = 0
@@ -91,7 +92,7 @@ class AnimalEnv():
             a: (
                 self.get_obs(self.agent_instances[a], a)            
                 )
-            for a in self.agents
+            for a in self.agent_instances
         }
         return observations
 
@@ -143,9 +144,18 @@ class AnimalEnv():
             a: a
             for a in self.agents
         }
-     
+
+        dead_agents = []
+
         for agent_name in self.agents:
             if not self.agent_instances[agent_name].alive:
+                dead_agents.append(agent_name)
+
+        if self.is_NS:
+            for agent_name in dead_agents:
+                self.agent_instances.pop(agent_name)
+        else:
+            for agent_name in dead_agents:
                 self.agents.remove(agent_name)
 
         return observations, rewards, terminations, truncations, skip, agent_names
@@ -174,7 +184,9 @@ class AnimalEnv():
     def render_human_only(self):
         font = pygame.font.Font(None, 20)
         if self.render_mode == "Human":
-            for name in self.agents:
+            for name in self.agent_instances:
+                if not self.agent_instances[name].alive:
+                    continue
                 agent_ins = self.agent_instances[name]
                 agent_ins.draw_name(self.screen, font, name)
                 agent_ins.draw_energy(self.screen)

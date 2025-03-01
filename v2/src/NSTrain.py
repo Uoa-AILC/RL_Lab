@@ -18,7 +18,7 @@ MUTATION_NUMBER = 3
 NUM_AGENTS_TO_SELECT = 5
 REPRODUCE_METHOD = 'even'
 
-SPEED_FACTOR = 10
+SPEED_FACTOR = 3
 DT_FACTOR = 0.1 
 RENDER_MODE = "Human"
 
@@ -43,7 +43,7 @@ if __name__ == '__main__':
 
     # Load the model if it exists
     try:
-        trainer.load_model("GA_model_final.pt")
+        trainer.load_model("GA_model_final1.pt")
     except Exception as e:
         print(e)
 
@@ -53,17 +53,27 @@ if __name__ == '__main__':
     current_state = parallel_env.reset(trainer.population, trainer.plants, trainer.possible_agents)
 
     while step < MAX_STEPS:
+        new_borns = []
+        for agent in parallel_env.agent_instances:
+            child = parallel_env.agent_instances[agent].reproduce()
+            if child:
+                new_borns.append(child)
+        
+        for child in new_borns:
+            trainer.add_new_born(child)
+
         actions = {}
-        for agent in parallel_env.agents:
-            actions[agent] = trainer.get_action(current_state[agent], parallel_env.action_space(agent), agent)
+        for agent in parallel_env.agent_instances:
+            try:
+                state = current_state[agent]
+                actions[agent] = trainer.get_action(current_state[agent], parallel_env.action_space(agent), agent)
+            except:
+                actions[agent] = 4
         next_state, rewards, _, _, skip, agent_names = parallel_env.step(actions)
         current_state = next_state
         # Skip the frame
         if skip:
             continue
-        for agent in parallel_env.agent_instances:
-            child = parallel_env.agent_instances[agent].reproduce()
-            trainer.add_new_born(child)
 
 
         step += 1

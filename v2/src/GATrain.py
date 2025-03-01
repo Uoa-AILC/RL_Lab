@@ -43,7 +43,7 @@ if __name__ == '__main__':
 
     # Load the model if it exists
     try:
-        GA_trainer.load_model("GA_model_final.pt")
+        GA_trainer.load_model("GA_model_final1.pt")
     except Exception as e:
         print(e)
 
@@ -54,6 +54,7 @@ if __name__ == '__main__':
     while step < MAX_STEPS:
         # Reset the environment
         current_state = parallel_env.reset(GA_trainer.population, GA_trainer.plants, GA_trainer.possible_agents)
+        GA_trainer.reset_agents()
         episode_step = 0
         num_episodes += 1
 
@@ -70,7 +71,7 @@ if __name__ == '__main__':
             for agent_name in agent_names:
                 # Add the reward to the reward recorder
                 rewards_record.add_reward(agent_names[agent_name], rewards[agent_name])
- 
+
             episode_step += 1
             step += 1
             if step % 1000 == 0:
@@ -84,12 +85,12 @@ if __name__ == '__main__':
         # Evaluate the agents after each episode
         experience = rewards_record.get_rewards()
         GA_trainer.evaluate(experience)
-        
+
         # Update the population every UPDATE_FREQUENCY episodes
         if num_episodes % UPDATE_FREQUENCY == 0:
             selected_agents = GA_trainer.select_population(NUM_AGENTS_TO_SELECT)
             GA_trainer.update_population(selected_agents, method=REPRODUCE_METHOD, mutation_rate=MUTATION_RATE, num_mutations=MUTATION_NUMBER)
-    
+
     GA_trainer.save_model("GA_model_final.pt")
 
 

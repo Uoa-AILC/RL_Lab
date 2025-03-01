@@ -2,7 +2,7 @@ import json
 import random
 import torch
 import math
-import copy
+from copy import copy
 from animal_V2 import Animal
 from SimpleNN import MiniNN
 
@@ -44,6 +44,9 @@ class GATrainer:
     def get_new_nn(self):
         return MiniNN(math.prod(self.image_shape)+self.input_feature_size, self.output_feature_size).to(self.device)
 
+    def reset_agents(self):
+        for agent_name in self.population:
+            self.population[agent_name].reset()
     # function to add an agent to the population
     def add_agent(self, agent_name):
         nn = self.get_new_nn()
@@ -205,6 +208,21 @@ class GATrainer:
     #         json.dump(serializable_state, f, indent=2)
     #     print(f"Best model saved to {filename}")
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 class NSTrainer:
     def  __init__(self, image_shape, input_feature_size, output_feature_size, max_agent_size=15, plant_size=25, device='cpu', window_width=WINDOW_WIDTH, window_height=WINDOW_HEIGHT, is_simple=False, is_reproducing=False):
         self.max_agent_size = max_agent_size
@@ -221,14 +239,14 @@ class NSTrainer:
         self.possible_agents = ["agent_" + str(r) for r in range(self.max_agent_size)]
         # create the plants
         self.plants = [Plant((0, 255, 0), (255, 0, 0)) for _ in range(plant_size)]
-        for agent_name in self.possible_agents:
-            self.add_agent(agent_name)
+        # for agent_name in self.possible_agents:
+        #     self.add_agent(agent_name)
 
     def __len__(self):
         return len(self.population)
 
     def get_new_animal(self, nn):
-        return Animal(0, 0, self.window_width, self.window_height, 40, nn, 0.05)
+        return Animal(0, 0, self.window_width, self.window_height, 40, nn, 0.005)
 
     # funtion to get a simple neural network instance
     def get_new_nn(self):
@@ -253,15 +271,17 @@ class NSTrainer:
                 return torch.argmax(q_values).item()
 
     def add_new_born(self, agent):
+        if agent == None:
+            return
         if (len(self.population) < self.max_agent_size):
             for agent_name in self.possible_agents:
                 if agent_name not in self.population:
                     self.population[agent_name] = agent
-                    agent.nn = copy(agent.nn)
                     self.mutate_agent(1, agent_name, num_mutations=2)
                     print(f"New agent produced {agent_name}")
-            else:
-                print("Population is full")
+                    break
+        else:
+            print("Population is full")
 
     def mutate_agent(self, degree, agent_name, num_mutations=2):
         with torch.no_grad():
@@ -293,12 +313,9 @@ class NSTrainer:
             new_animal = self.get_new_animal(nn)
             self.population[agent_name] = new_animal
             print(f"Agent {agent_name} loaded")
-            self.performance[agent_name] = 0
             num_loaded += 1
-            if num_loaded >= self.agent_size:
+            if num_loaded >= self.max_agent_size:
                 break
-        self.population_size += len(checkpoint['models'])
-        print(f"Population size: {self.population_size}")
 
     def save_model(self, filename):
         selected_agents = self.select_population()
